@@ -538,8 +538,10 @@
             right: 0;
             top: 0;
             bottom: 0;
-            background: linear-gradient(160deg, #ff8ab5 0%, #d65dff 100%);
-            border-radius: 14px;
+            background:
+                url('./image.png') center / 45% auto no-repeat,
+                linear-gradient(160deg, #ff8ab5 0%, #d65dff 100%);
+            border-radius: 0 0 14px 14px;
             box-shadow: 0 10px 30px rgba(255, 107, 157, 0.35), inset 0 -10px 18px rgba(0, 0, 0, 0.18);
             z-index: 2;
         }
@@ -1386,7 +1388,7 @@
                 const dx = (e.clientX - r.left) / r.width - 0.5;
                 const dy = (e.clientY - r.top) / r.height - 0.5;
                 item.style.transition = 'transform 0.08s ease-out, box-shadow 0.3s ease';
-                item.style.transform = `perspective(700px) rotateX(${(-dy * 10).toFixed(2)}deg) rotateY(${(dx * 10).toFixed(2)}deg) scale(1.05) translateY(-4px)`;
+                item.style.transform = `perspective(700px) rotateX(${(-dy * 16).toFixed(2)}deg) rotateY(${(dx * 16).toFixed(2)}deg) scale(1.08) translateY(-4px)`;
             });
             item.addEventListener('mouseleave', () => {
                 item.style.transition = '';
@@ -1693,16 +1695,21 @@
         const musicIcon = document.getElementById('music-icon');
 
         function initAudio() {
+            if (audio) return; // 已经初始化过，避免重复创建
             try {
                 audio = new Audio(MUSIC_URL);
                 audio.loop = true;
                 audio.volume = 0.3;
-                audio.play().catch(() => {
-                    // 自动播放被阻止，用户点击页面时再尝试
-                    isMusicPlaying = false;
-                    musicIcon.textContent = '🔇';
-                    musicBtn.classList.remove('playing');
-                });
+                audio.autoplay = true;
+                const p = audio.play();
+                if (p) {
+                    p.catch(() => {
+                        // 自动播放被阻止，等用户有任何交互时再尝试
+                        isMusicPlaying = false;
+                        musicIcon.textContent = '🔇';
+                        musicBtn.classList.remove('playing');
+                    });
+                }
             } catch (e) {
                 console.log('音乐加载失败，可忽略');
             }
@@ -1710,6 +1717,7 @@
 
         // 用户首次点击页面时尝试播放音乐
         function tryPlayMusic() {
+            if (!audio) initAudio();
             if (audio && !isMusicPlaying) {
                 audio.play().then(() => {
                     isMusicPlaying = true;
@@ -1719,8 +1727,10 @@
             }
         }
 
-        document.addEventListener('click', tryPlayMusic);
-        document.addEventListener('touchstart', tryPlayMusic);
+        // 任何交互（点击/触摸/按键/滚动）都尽早触发音乐播放
+        ['click', 'touchstart', 'keydown', 'scroll', 'pointerdown'].forEach(evt => {
+            document.addEventListener(evt, tryPlayMusic, { passive: true });
+        });
 
         musicBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1745,10 +1755,9 @@
             }
         });
 
-        // 页面加载后初始化音乐
-        window.addEventListener('load', () => {
-            setTimeout(initAudio, 500);
-        });
+        // 页面加载后尽早初始化音乐
+        window.addEventListener('DOMContentLoaded', initAudio);
+        window.addEventListener('load', initAudio);
 
         // ---------- 8. 滚动渐显 (Intersection Observer) ----------
         const fadeEls = document.querySelectorAll('.fade-in');
